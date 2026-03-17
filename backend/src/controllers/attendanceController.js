@@ -67,3 +67,69 @@ exports.logExit = async (req, res, next) => {
     });
   }
 };
+
+/**
+ * @desc    Log student entry back into a lecture
+ * @route   POST /api/logs/entry
+ * @access  Private
+ */
+exports.logEntry = async (req, res, next) => {
+  try {
+    console.log("ENTRY BODY:", req.body);
+    const { studentId, lectureId } = req.body;
+
+    // 1. Validate studentId and lectureId
+    if (!studentId || !lectureId) {
+      return res.status(400).json({ message: "studentId and lectureId required" });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(studentId) || !mongoose.Types.ObjectId.isValid(lectureId)) {
+      return res.status(400).json({ message: "Invalid IDs" });
+    }
+
+    // 2. Find open log (entryTime = null)
+    const log = await AttendanceLog.findOne({
+      studentId,
+      lectureId,
+      entryTime: null
+    });
+
+    if (!log) {
+      return res.status(404).json({ message: "No active exit found" });
+    }
+
+    // 3. Set entryTime
+    const entryTime = new Date();
+    log.entryTime = entryTime;
+
+    // 4. Calculate duration (minutes)
+    const diffMs = entryTime - log.exitTime;
+    const duration = Math.round(diffMs / (1000 * 60)); // Round to nearest minute
+    log.duration = duration;
+
+    // 5. Check threshold
+    const THRESHOLD = 7;
+    if (duration > THRESHOLD) {
+      log.status = 'exceeded';
+    } else {
+      log.status = 'normal';
+    }
+
+    // 6. Save log
+    await log.save();
+
+    res.status(200).json({
+      message: "Entry logged successfully",
+      duration,
+      status: log.status,
+      log
+    });
+
+  } catch (error) {
+    console.error("❌ ENTRY ERROR:", error);
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
+    });
+  }
+};
