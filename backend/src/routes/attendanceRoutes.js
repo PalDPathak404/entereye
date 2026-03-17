@@ -8,4 +8,9 @@ const auth = require('../middleware/auth');
 // @access  Private
 router.post('/exit', auth, attendanceController.logExit);
 
+// @route   POST /api/logs/entry
+// @desc    Log student entry
+// @access  Private
+router.post('/entry', auth, attendanceController.logEntry);
+
 module.exports = router;
