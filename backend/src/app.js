@@ -5,6 +5,7 @@ const authRoutes = require('./routes/authRoutes');
 const batchRoutes = require('./routes/batchRoutes');
 const studentRoutes = require('./routes/studentRoutes');
 const lectureRoutes = require('./routes/lectureRoutes');
+const attendanceRoutes = require('./routes/attendanceRoutes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -32,6 +33,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/batches', batchRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/lectures', lectureRoutes);
+app.use('/api/logs', attendanceRoutes);
 
 
 // Error Handling Middleware
