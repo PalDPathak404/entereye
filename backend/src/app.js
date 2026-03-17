@@ -4,6 +4,8 @@ const routes = require('./routes');
 const authRoutes = require('./routes/authRoutes');
 const batchRoutes = require('./routes/batchRoutes');
 const studentRoutes = require('./routes/studentRoutes');
+const lectureRoutes = require('./routes/lectureRoutes');
+console.log('lectureRoutes loaded in app.js:', !!lectureRoutes);
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -20,7 +22,13 @@ app.use((req, res, next) => {
 
 // Routes
 app.get('/ping', (req, res) => {
-  res.send('Server is alive');
+  console.log('GET /ping hit');
+  res.send('Server is alive - v2');
+});
+
+app.post('/api/debug-post', (req, res) => {
+  console.log('POST /api/debug-post hit');
+  res.send('Debug POST working');
 });
 
 app.get('/', (req, res) => {
@@ -30,6 +38,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/batches', batchRoutes);
 app.use('/api/students', studentRoutes);
+app.use('/api/lectures', lectureRoutes);
 
 
 // Error Handling Middleware
