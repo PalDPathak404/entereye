@@ -5,7 +5,6 @@ const authRoutes = require('./routes/authRoutes');
 const batchRoutes = require('./routes/batchRoutes');
 const studentRoutes = require('./routes/studentRoutes');
 const lectureRoutes = require('./routes/lectureRoutes');
-console.log('lectureRoutes loaded in app.js:', !!lectureRoutes);
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -22,13 +21,7 @@ app.use((req, res, next) => {
 
 // Routes
 app.get('/ping', (req, res) => {
-  console.log('GET /ping hit');
-  res.send('Server is alive - v2');
-});
-
-app.post('/api/debug-post', (req, res) => {
-  console.log('POST /api/debug-post hit');
-  res.send('Debug POST working');
+  res.send('Server is alive');
 });
 
 app.get('/', (req, res) => {
