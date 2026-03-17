@@ -49,3 +49,35 @@ exports.getBatches = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * @desc    Activate a batch (deactivates all others)
+ * @route   PUT /api/batches/:id/activate
+ * @access  Private/Admin
+ */
+exports.activateBatch = async (req, res, next) => {
+  try {
+    const batchId = req.params.id;
+
+    // First deactivate all batches
+    await Batch.updateMany({}, { isActive: false });
+
+    // Then activate selected batch
+    const batch = await Batch.findByIdAndUpdate(
+      batchId,
+      { isActive: true },
+      { new: true }
+    );
+
+    if (!batch) {
+      return res.status(404).json({ message: 'Batch not found' });
+    }
+
+    res.status(200).json({
+      message: 'Batch activated successfully',
+      batch,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

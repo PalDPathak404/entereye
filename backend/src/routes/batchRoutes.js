@@ -14,4 +14,9 @@ router.post('/', auth, requireRole('admin'), batchController.createBatch);
 // @access  Private
 router.get('/', auth, batchController.getBatches);
 
+// @route   PUT /api/batches/:id/activate
+// @desc    Activate a batch
+// @access  Private/Admin
+router.put('/:id/activate', auth, requireRole('admin'), batchController.activateBatch);
+
 module.exports = router;
