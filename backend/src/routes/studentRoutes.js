@@ -6,7 +6,12 @@ const requireRole = require('../middleware/requireRole');
 
 // @route   POST /api/students
 // @desc    Register a new student
-// @access  Private (Admin, Assistant)
-router.post('/', auth, requireRole('admin', 'assistant'), studentController.registerStudent);
+// @access  Public (for dashboard registration)
+router.post('/', studentController.registerStudent);
+
+// @route   GET /api/students
+// @desc    Get all students
+// @access  Public (for dashboard)
+router.get('/', studentController.getStudents);
 
 module.exports = router;

@@ -7,6 +7,7 @@ const studentRoutes = require('./routes/studentRoutes');
 const lectureRoutes = require('./routes/lectureRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
+const faceRecognitionRoutes = require('./routes/faceRecognitionRoutes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -36,6 +37,7 @@ app.use('/api/students', studentRoutes);
 app.use('/api/lectures', lectureRoutes);
 app.use('/api/logs', attendanceRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/recognize', faceRecognitionRoutes);
 
 
 // Error Handling Middleware

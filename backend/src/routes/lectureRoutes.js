@@ -19,4 +19,14 @@ router.put('/:id/end', auth, requireRole('teacher'), lectureController.endLectur
 // @access  Private (Authenticated)
 router.get('/current', auth, lectureController.getActiveLecture);
 
+// @route   GET /api/lectures/history
+// @desc    Get inactive lectures history
+// @access  Public
+router.get('/history', lectureController.getLectureHistory);
+
+// @route   DELETE /api/lectures/:id
+// @desc    Delete a lecture and its logs
+// @access  Public
+router.delete('/:id', lectureController.deleteLecture);
+
 module.exports = router;

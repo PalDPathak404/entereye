@@ -4,17 +4,26 @@ import EntrancePage from './pages/EntrancePage';
 import LandingPage from './pages/LandingPage';
 import Dashboard from './Dashboard';
 
-const App: React.FC = () => {
+const AppRouter: React.FC = () => {
   return (
     <Routes>
       <Route path="/" element={<EntrancePage />} />
       <Route path="/landing" element={<LandingPage />} />
       <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/register" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/login" element={<LoginRedirect />} />
+      <Route path="/register" element={<RegisterRedirect />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };
 
-export default App;
+// Temporary redirects - you can replace these with actual login/register pages
+const LoginRedirect: React.FC = () => {
+  return <Navigate to="/dashboard" replace />;
+};
+
+const RegisterRedirect: React.FC = () => {
+  return <Navigate to="/dashboard" replace />;
+};
+
+export default AppRouter;

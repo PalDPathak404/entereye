@@ -1,4 +1,5 @@
 const Lecture = require('../models/Lecture');
+const AttendanceLog = require('../models/AttendanceLog');
 
 /**
  * @desc    Start a new lecture
@@ -104,3 +105,56 @@ exports.getActiveLecture = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * @desc    Get all inactive (completed) lectures
+ * @route   GET /api/lectures/history
+ * @access  Public
+ */
+exports.getLectureHistory = async (req, res, next) => {
+  try {
+    const { batchId } = req.query;
+    
+    let filter = { isActive: false };
+    if (batchId) {
+      filter.batchId = batchId;
+    }
+
+    const lectures = await Lecture.find(filter)
+      .sort({ startTime: -1 })
+      .populate('batchId', 'name')
+      .populate('teacherId', 'name');
+
+    res.status(200).json({
+      lectures
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Delete a lecture and its logs
+ * @route   DELETE /api/lectures/:id
+ * @access  Public
+ */
+exports.deleteLecture = async (req, res, next) => {
+  try {
+    const lectureId = req.params.id;
+    
+    // First delete all attendance logs associated with this lecture
+    await AttendanceLog.deleteMany({ lectureId: lectureId });
+    
+    // Then delete the lecture itself
+    const deletedLecture = await Lecture.findByIdAndDelete(lectureId);
+    
+    if (!deletedLecture) {
+      return res.status(404).json({ message: 'Lecture not found' });
+    }
+    
+    res.status(200).json({ message: 'Lecture deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+

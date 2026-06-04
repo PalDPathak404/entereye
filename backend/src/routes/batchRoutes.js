@@ -11,8 +11,8 @@ router.post('/', auth, requireRole('admin'), batchController.createBatch);
 
 // @route   GET /api/batches
 // @desc    Get all batches
-// @access  Private
-router.get('/', auth, batchController.getBatches);
+// @access  Public (for dashboard)
+router.get('/', batchController.getBatches);
 
 // @route   PUT /api/batches/:id/activate
 // @desc    Activate a batch

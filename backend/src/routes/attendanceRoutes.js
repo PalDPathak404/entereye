@@ -13,4 +13,14 @@ router.post('/exit', auth, attendanceController.logExit);
 // @access  Private
 router.post('/entry', auth, attendanceController.logEntry);
 
+// @route   GET /api/logs/outside
+// @desc    Get all students currently outside for a batch
+// @access  Public (for dashboard)
+router.get('/outside', attendanceController.getOutsideStudents);
+
+// @route   GET /api/logs/lecture/:lectureId
+// @desc    Get all attendance logs for a specific lecture
+// @access  Public
+router.get('/lecture/:lectureId', attendanceController.getLogsByLecture);
+
 module.exports = router;

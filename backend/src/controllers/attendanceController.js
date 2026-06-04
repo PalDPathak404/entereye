@@ -7,24 +7,25 @@ const Lecture = require('../models/Lecture');
  * @route   POST /api/logs/exit
  * @access  Private
  */
-exports.logExit = async (req, res, next) => {
+exports.logExit = async (req, res) => {
   try {
-    // Step 1: Add Debugging
-    console.log("BODY:", req.body);
+    console.log("📥 EXIT BODY:", req.body);
 
     const { studentId, lectureId } = req.body;
 
-    // Step 2: Validate Request Data
+    // Validate input
     if (!studentId || !lectureId) {
       return res.status(400).json({ message: "studentId and lectureId required" });
     }
 
-    // Step 5: Validate IDs as Mongo ObjectIds
-    if (!mongoose.Types.ObjectId.isValid(studentId) || !mongoose.Types.ObjectId.isValid(lectureId)) {
+    if (
+      !mongoose.Types.ObjectId.isValid(studentId) ||
+      !mongoose.Types.ObjectId.isValid(lectureId)
+    ) {
       return res.status(400).json({ message: "Invalid IDs" });
     }
 
-    // Step 6: Check Lecture Exists and is Active
+    // Check lecture
     const lecture = await Lecture.findById(lectureId);
     if (!lecture) {
       return res.status(404).json({ message: "Lecture not found" });
@@ -34,7 +35,7 @@ exports.logExit = async (req, res, next) => {
       return res.status(400).json({ message: "Lecture is not active" });
     }
 
-    // Step 4: Check if student already has an open log (entryTime = null) for this lecture
+    // Check existing open log
     const existingLog = await AttendanceLog.findOne({
       studentId,
       lectureId,
@@ -45,23 +46,40 @@ exports.logExit = async (req, res, next) => {
       return res.status(400).json({ message: "Student already outside" });
     }
 
-    // Step 7: Create Log Safely
+    // Create log
     const log = await AttendanceLog.create({
       studentId,
       lectureId,
       exitTime: new Date()
     });
 
-    // Step 8: Return Response
-    res.status(201).json({
+    // 🔥 SOCKET EMIT (ROOM-BASED)
+    const io = req.app.get('socketio');
+
+    if (io) {
+      const batchId = lecture.batchId.toString();
+
+      console.log("🚀 EMIT student_exit →", {
+        studentId,
+        lectureId,
+        batchId
+      });
+
+      io.to(batchId).emit('student_exit', {
+        studentId,
+        lectureId,
+        exitTime: log.exitTime
+      });
+    }
+
+    return res.status(201).json({
       message: "Exit logged successfully",
       log
     });
 
   } catch (error) {
-    // Step 1: Improved Error Handling
     console.error("❌ EXIT ERROR:", error);
-    res.status(500).json({
+    return res.status(500).json({
       message: "Server error",
       error: error.message
     });
@@ -69,25 +87,80 @@ exports.logExit = async (req, res, next) => {
 };
 
 /**
+ * @desc    Get all students currently outside for a batch
+ * @route   GET /api/logs/outside
+ * @access  Public (for dashboard)
+ */
+exports.getOutsideStudents = async (req, res) => {
+  try {
+    const { batchId } = req.query;
+
+    if (!batchId) {
+      return res.status(400).json({ message: "batchId is required" });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(batchId)) {
+      return res.status(400).json({ message: "Invalid batchId" });
+    }
+
+    // Find all logs where entryTime is null
+    const logs = await AttendanceLog.find({ entryTime: null })
+      .populate({
+        path: 'studentId',
+        match: { batchId: batchId },
+        select: 'name rollNo'
+      });
+
+    // Filter logs where studentId matched the batchId
+    // and format for frontend
+    const outsideStudents = logs
+      .filter(log => log.studentId !== null)
+      .map(log => ({
+        studentId: log.studentId._id,
+        name: log.studentId.name,
+        rollNo: log.studentId.rollNo,
+        exitTime: log.exitTime,
+        lectureId: log.lectureId
+      }));
+
+    return res.status(200).json({
+      students: outsideStudents
+    });
+
+  } catch (error) {
+    console.error("❌ GET OUTSIDE ERROR:", error);
+    return res.status(500).json({
+      message: "Server error",
+      error: error.message
+    });
+  }
+};
+
+
+/**
  * @desc    Log student entry back into a lecture
  * @route   POST /api/logs/entry
  * @access  Private
  */
-exports.logEntry = async (req, res, next) => {
+exports.logEntry = async (req, res) => {
   try {
-    console.log("ENTRY BODY:", req.body);
+    console.log("📥 ENTRY BODY:", req.body);
+
     const { studentId, lectureId } = req.body;
 
-    // 1. Validate studentId and lectureId
+    // Validate input
     if (!studentId || !lectureId) {
       return res.status(400).json({ message: "studentId and lectureId required" });
     }
 
-    if (!mongoose.Types.ObjectId.isValid(studentId) || !mongoose.Types.ObjectId.isValid(lectureId)) {
+    if (
+      !mongoose.Types.ObjectId.isValid(studentId) ||
+      !mongoose.Types.ObjectId.isValid(lectureId)
+    ) {
       return res.status(400).json({ message: "Invalid IDs" });
     }
 
-    // 2. Find open log (entryTime = null)
+    // Find open log
     const log = await AttendanceLog.findOne({
       studentId,
       lectureId,
@@ -98,36 +171,102 @@ exports.logEntry = async (req, res, next) => {
       return res.status(404).json({ message: "No active exit found" });
     }
 
-    // 3. Set entryTime
+    // Get lecture
+    const lecture = await Lecture.findById(lectureId);
+    if (!lecture) {
+      return res.status(404).json({ message: "Lecture not found" });
+    }
+
+    // Set entry time
     const entryTime = new Date();
     log.entryTime = entryTime;
 
-    // 4. Calculate duration (minutes)
+    // Calculate duration (in minutes)
     const diffMs = entryTime - log.exitTime;
-    const duration = Math.round(diffMs / (1000 * 60)); // Round to nearest minute
+    const duration = Math.round(diffMs / (1000 * 60));
     log.duration = duration;
 
-    // 5. Check threshold
+    // Threshold logic
     const THRESHOLD = 7;
-    if (duration > THRESHOLD) {
-      log.status = 'exceeded';
-    } else {
-      log.status = 'normal';
-    }
+    log.status = duration > THRESHOLD ? 'exceeded' : 'normal';
 
-    // 6. Save log
     await log.save();
 
-    res.status(200).json({
+    // 🔥 SOCKET EMIT (ROOM-BASED)
+    const io = req.app.get('socketio');
+
+    if (io) {
+      const batchId = lecture.batchId.toString();
+
+      console.log("🚀 EMIT student_entry →", {
+        studentId,
+        lectureId,
+        duration: log.duration,
+        status: log.status,
+        batchId
+      });
+
+      io.to(batchId).emit('student_entry', {
+        studentId,
+        lectureId,
+        entryTime: log.entryTime,
+        duration: log.duration,
+        status: log.status
+      });
+    }
+
+    return res.status(200).json({
       message: "Entry logged successfully",
-      duration,
+      duration: log.duration,
       status: log.status,
       log
     });
-
   } catch (error) {
     console.error("❌ ENTRY ERROR:", error);
-    res.status(500).json({
+    return res.status(500).json({
+      message: "Server error",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @desc    Get all attendance logs for a specific lecture
+ * @route   GET /api/logs/lecture/:lectureId
+ * @access  Public
+ */
+exports.getLogsByLecture = async (req, res) => {
+  try {
+    const { lectureId } = req.params;
+
+    if (!lectureId || !mongoose.Types.ObjectId.isValid(lectureId)) {
+      return res.status(400).json({ message: "Invalid lectureId" });
+    }
+
+    const logs = await AttendanceLog.find({ lectureId })
+      .populate('studentId', 'name rollNo')
+      .sort({ exitTime: -1 });
+
+    const formattedLogs = logs
+      .filter(log => log.studentId !== null)
+      .map(log => ({
+        _id: log._id,
+        studentId: log.studentId._id,
+        name: log.studentId.name,
+        rollNo: log.studentId.rollNo,
+        exitTime: log.exitTime,
+        entryTime: log.entryTime,
+        duration: log.duration,
+        status: log.status
+      }));
+
+    return res.status(200).json({
+      logs: formattedLogs
+    });
+
+  } catch (error) {
+    console.error("❌ GET LECTURE LOGS ERROR:", error);
+    return res.status(500).json({
       message: "Server error",
       error: error.message
     });
